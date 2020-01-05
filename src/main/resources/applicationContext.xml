@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd">
+
+    <!-- 开启包自动扫描 -->
+    <context:component-scan base-package="com.youyuan"/>
+    <!-- 配置ConnectionFactory -->
+    <bean id="jmsFactory" class="org.apache.activemq.pool.PooledConnectionFactory" destroy-method="stop">
+        <property name="connectionFactory">
+            <!-- 真正可以产生connection的ConnectionFactory 由对应的JMS厂商提供 -->
+            <bean class="org.apache.activemq.ActiveMQConnectionFactory">
+                <property name="brokerURL" value="tcp://192.168.1.18:61616"/>
+            </bean>
+        </property>
+        <property name="maxConnections" value="100"/>
+    </bean>
+
+    <!-- 配置目的地是queue的地址  点对点-->
+    <bean id="destinationQueue" class="org.apache.activemq.command.ActiveMQQueue">
+        <constructor-arg index="0" value="spring-active-queu"/>
+    </bean>
+
+    <!-- 配置目的地是topic的地址 一对多 -->
+    <bean id="destinationTopic" class="org.apache.activemq.command.ActiveMQTopic">
+        <constructor-arg index="0" value="spring-active-topic"/>
+    </bean>
+
+    <!-- 配置JMS的工具类 可以发送和接收消息 -->
+    <bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+        <!-- 配置ConnectionFactory -->
+        <property name="connectionFactory" ref="jmsFactory"/>
+        <!-- 配置目的地 -->
+        <!--<property name="defaultDestination" ref="destinationQueue"/>-->
+        <property name="defaultDestination" ref="destinationTopic"/>
+        <!-- 配置类型转换 -->
+        <property name="messageConverter">
+            <bean class="org.springframework.jms.support.converter.SimpleMessageConverter"/>
+        </property>
+        <!-- 开启订阅模式 -->
+        <property name="pubSubDomain" value="true"/>
+        <!-- 持久化配置 -->
+        <property name="deliveryMode" value="2"/>
+
+    </bean>
+
+    <!-- 配置监听器来接收生产者发送的消息 -->
+    <bean id="jmsContainer" class="org.springframework.jms.listener.DefaultMessageListenerContainer">
+        <property name="connectionFactory" ref="jmsFactory"/>
+        <property name="destination" ref="destinationTopic"/>
+        <!-- 自定义一个监听器实现MessageListener接口 -->
+        <property name="messageListener" ref="myMessageListener"/>
+        <!-- 消息持久化值设置为true -->
+        <property name="subscriptionDurable" value="true"/>
+        <!-- 接收者ID -->
+        <property name="clientId" value="clientId_008" />
+        <property name="durableSubscriptionName" value="clientId_002" />
+    </bean>
+
+</beans>
